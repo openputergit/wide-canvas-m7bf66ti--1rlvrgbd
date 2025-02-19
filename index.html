@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MoodBot - Your Emotional Wellness Companion</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: #f5f5f5;
+        }
+        .chat-container {
+            height: calc(100vh - 260px);
+        }
+        .message-bubble {
+            max-width: 85%;
+            animation: fadeIn 0.4s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .typing-indicator span {
+            animation: blink 1.4s infinite both;
+        }
+        .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes blink {
+            0% { opacity: 0.1; }
+            20% { opacity: 1; }
+            100% { opacity: 0.1; }
+        }
+        .emoji-reactions {
+            transition: all 0.3s ease;
+        }
+        .emoji-btn:hover {
+            transform: scale(1.2);
+        }
+    </style>
+</head>
+<body class="min-h-screen p-4 md:p-6">
+    <div x-data="chatApp()" class="max-w-3xl mx-auto">
+        <div class="bg-white rounded-2xl shadow-2xl overflow-hidden">
+            <!-- Header -->
+            <div class="bg-gradient-to-r from-[#00b4f0] to-[#9816d4] p-6 relative">
+                <div class="absolute top-0 left-0 w-full h-full opacity-10 background-pattern"></div>
+                <img src="https://firebasestorage.googleapis.com/v0/b/widecanvas-d0dd4.appspot.com/o/logos%2Flogo.webp?alt=media&token=59ee4157-3711-48a8-a76d-d09aa84c7e9b"
+                     alt="MoodBot Logo" 
+                     class="w-16 h-16 mx-auto mb-4 rounded-full shadow-lg">
+                <h1 class="text-3xl font-bold text-white text-center mb-2">MoodBot</h1>
+                <p class="text-center text-white text-opacity-90">Your AI-Powered Emotional Wellness Partner</p>
+            </div>
+
+            <!-- Chat Area -->
+            <div class="chat-container overflow-y-auto p-4 bg-gray-50" x-ref="chatContainer">
+                <div id="chat-messages" class="space-y-4">
+                    <template x-for="message in messages" :key="message.id">
+                        <div :class="`message-bubble ${message.isUser ? 'ml-auto' : 'mr-auto'}`">
+                            <div :class="`p-4 rounded-2xl shadow-sm ${message.isUser ? 'bg-gradient-to-r from-[#00b4f0] to-[#9816d4] text-white' : 'bg-gray-100'}`">
+                                <p x-text="message.text" class="leading-relaxed"></p>
+                            </div>
+                            <div x-show="!message.isUser" class="emoji-reactions mt-2 flex gap-2 justify-start">
+                                <button @click="reactToMessage(message.id, 'helpful')" class="emoji-btn text-sm bg-white/80 hover:bg-white px-2 py-1 rounded-full shadow-sm transition-all">👍</button>
+                                <button @click="reactToMessage(message.id, 'love')" class="emoji-btn text-sm bg-white/80 hover:bg-white px-2 py-1 rounded-full shadow-sm transition-all">❤️</button>
+                                <button @click="reactToMessage(message.id, 'thanks')" class="emoji-btn text-sm bg-white/80 hover:bg-white px-2 py-1 rounded-full shadow-sm transition-all">🙏</button>
+                            </div>
+                        </div>
+                    </template>
+                    <div x-show="isLoading" class="message-bubble mr-auto">
+                        <div class="bg-gray-100 p-4 rounded-2xl shadow-sm">
+                            <div class="typing-indicator flex gap-1">
+                                <span class="w-2 h-2 bg-gray-400 rounded-full"></span>
+                                <span class="w-2 h-2 bg-gray-400 rounded-full"></span>
+                                <span class="w-2 h-2 bg-gray-400 rounded-full"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Input Area -->
+            <div class="p-4 border-t border-gray-100 bg-white">
+                <div class="flex gap-3 items-center">
+                    <button @click="toggleEmojiPicker()" class="text-gray-400 hover:text-[#00b4f0] transition-colors">
+                        <i class="bi bi-emoji-smile text-xl"></i>
+                    </button>
+                    <input type="text" 
+                           x-model="userInput" 
+                           @keyup.enter="sendMessage()"
+                           placeholder="Share how you're feeling..." 
+                           :disabled="isLoading"
+                           class="flex-1 p-4 rounded-xl border border-gray-200 focus:outline-none focus:border-[#00b4f0] focus:ring-2 focus:ring-[#00b4f0]/20 transition-all">
+                    <button @click="sendMessage()" 
+                            :disabled="isLoading || !userInput.trim()"
+                            class="bg-gradient-to-r from-[#00b4f0] to-[#9816d4] text-white px-6 py-4 rounded-xl hover:opacity-90 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
+                        <span x-show="!isLoading"><i class="bi bi-send"></i></span>
+                        <span x-show="isLoading" class="animate-spin"><i class="bi bi-arrow-repeat"></i></span>
+                    </button>
+                </div>
+                <div class="text-xs text-gray-400 mt-2 text-center">
+                    Your conversations are private and secure
+                </div>
+            </div>
+        </div>
+        
+        <!-- Bottom Image -->
+        <img src="https://firebasestorage.googleapis.com/v0/b/widecanvas-d0dd4.appspot.com/o/logos%2Flogo.webp?alt=media&token=59ee4157-3711-48a8-a76d-d09aa84c7e9b" 
+             alt="Bottom Logo" 
+             class="w-24 h-24 mx-auto mt-6 rounded-full shadow-lg">
+    </div>
+
+    <script>
+        function chatApp() {
+            return {
+                messages: [],
+                userInput: '',
+                isLoading: false,
+
+                async init() {
+                    const welcomeMessage = "Hi! I'm MoodBot, your personal emotional wellness companion. I'm here to listen, support, and help you process your feelings. How are you feeling today? 🌟";
+                    this.addMessage(welcomeMessage, false);
+                },
+
+                async sendMessage() {
+                    if (!this.userInput.trim() || this.isLoading) return;
+
+                    const userMessage = this.userInput;
+                    this.addMessage(userMessage, true);
+                    this.userInput = '';
+                    this.isLoading = true;
+
+                    try {
+                        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': 'Bearer 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'
+                            },
+                            body: JSON.stringify({
+                                model: "llama-3.3-70b-versatile",
+                                messages: [
+                                    { role: "user", content: userMessage }
+                                ]
+                            })
+                        });
+
+                        if (!response.ok) throw new Error('API request failed');
+
+                        const data = await response.json();
+                        const botResponse = data.choices[0].message.content;
+
+                        setTimeout(() => {
+                            this.addMessage(botResponse, false);
+                            this.isLoading = false;
+                            this.$refs.chatContainer.scrollTop = this.$refs.chatContainer.scrollHeight;
+                        }, 500);
+
+                    } catch (error) {
+                        console.error('Error:', error);
+                        this.addMessage("I apologize, but I'm having trouble connecting right now. Please try again in a moment. 🙏", false);
+                        this.isLoading = false;
+                    }
+                },
+
+                addMessage(text, isUser) {
+                    this.messages.push({
+                        id: Date.now(),
+                        text: text,
+                        isUser: isUser,
+                    });
+
+                    setTimeout(() => {
+                        this.$refs.chatContainer.scrollTop = this.$refs.chatContainer.scrollHeight;
+                    }, 100);
+                },
+
+                reactToMessage(messageId, reaction) {
+                    const message = this.messages.find(m => m.id === messageId);
+                    if (message && !message.isUser) {
+                        // Additional reaction handling logic can go here
+                    }
+                },
+
+                toggleEmojiPicker() {
+                    console.log('Emoji picker toggled');
+                }
+            }
+        }
+
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('chatApp', chatApp);
+        });
+
+        window.onload = function() {
+            chatApp().init();
+        };
+    </script>
+<script>document.body.addEventListener('wheel', e => { if (!e.ctrlKey) return; e.preventDefault(); return }, { passive: false })</script>
+	</body>
+</html>
